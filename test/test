@@ -1,0 +1,180 @@
+#!/usr/bin/env bash
+
+#------------------------------------------------------------------------------
+# @file
+# Performs assertion testing of the functions in this library.
+#
+#------------------------------------------------------------------------------
+
+set +u    # подключаем внешнюю "библиотеку"
+[[ ${_GUARD_BFL_AUTOLOAD} -eq 1 ]] || { . /etc/getConsts || exit 1; . "${BASH_FUNCTIONS_LIBRARY}"; }
+
+#------------------------------------------------------------------------------
+# @function
+#   Main function.
+#
+# @param array global $assertions
+#   Global array created by declare_assertions().
+#
+# shellcheck disable=SC1090
+# shellcheck disable=SC2034
+# shellcheck disable=SC2059
+#------------------------------------------------------------------------------
+main() {
+  # Verify arguments count.
+  (( $# < 2 )) || { bfl::error "arguments count $# ∉ [0..1]."; return ${BFL_ErrCode_Not_verified_args_count}; }
+
+  # Declare column widths (global constants) for displaying test results.
+  local -ri cw1=6     # Width of column 1: Result (PASS/FAIL)
+  local -i  cw2=0     # Width of column 2: Function                 CAN BE CHANGED!
+  local -ri cw3=34    # Width of column 3: Arguments
+  local -i  cw4=2     # Width of column 4: Expected return code     CAN BE CHANGED!
+  #local -ri cw5=2     # Width of column 5: Actual return code
+  #local -ri cw6=80    # Width of column 6: Expected command output
+  local -i cw7=80     # Width of column 7: Actual command output    CAN BE CHANGED!
+
+#   Tests a function to see if its return code matches the expected return code.
+# $function_to_test $args $expected_return_code (optional $expected_return_value)
+# shellcheck disable=SC2059
+# shellcheck disable=SC2154
+  assert() {
+    # Verify arguments count.
+    (( $# > 2 && $# < 5 )) || { bfl::error "arguments count $# ∉ [3..4]."; return ${BFL_ErrCode_Not_verified_args_count}; }
+
+    # Test for empty strings.
+    bfl::is_blank "$1" && { bfl::error "\$function_to_test is required."; return 1; }
+    bfl::is_blank "$3" && { bfl::error "\$expected_return_code is required."; return 1; }
+    local s3; [[ "$3" -lt 10 ]] && s3=' '  # expected_return_code
+
+    local {s,s2,cmd,cmd_output,format,result}=
+    local {wrong_code,wrong_value}=false
+    local -i iErr
+
+    # Run the command. The command is run in a subshell (command substitution);
+    # exit calls will terminate the subshell, not this script.
+    cmd=$(printf "%s %s" "$1" "$2")
+    cmd_output=$(eval "${cmd}" 2>&1)
+    iErr=$? # Immediately
+    [[ -z "$4" ]] && [[ -z "${cmd_output}" ]] && s2="" || s2=" | "
+
+    #   expected_return_code
+    [[ ${iErr} -eq "$3" ]] || { wrong_code=true; result="FAIL"; }
+    #                         expected_value
+    (( $# > 3 )) && [[ "${cmd_output}" != "$4" ]] && { wrong_value=true; result="FAIL"; }
+
+    # Print results.
+    if [[ $result = "FAIL" ]]; then
+        ${wrong_code} && s="${bfl_aes_red_blink}%-${cw4}s${bfl_aes_reset}" || s="%-${cw4}s"
+        ${wrong_value} && s="$s %s${s2}${bfl_aes_red_blink}" || s="$s %s${s2}"
+        format="${bfl_aes_red_bold}%-${cw1}s${bfl_aes_reset} %-${cw2}s %-${cw3}s %-${cw4}s / $s%s${bfl_aes_reset} \\n"
+    else
+        result="PASS"
+        format="${bfl_aes_green_bold}%-${cw1}s${bfl_aes_reset} %-${cw2}s %-${cw3}s %-${cw4}s / %-${cw4}s %s${s2}%s${bfl_aes_reset} \\n"
+    fi
+
+    local -r function_to_test="$1"
+    local -r args="$2"                #                                              expected / actual       expected / actual
+    cmd_output=${cmd_output//[$'\n']} #                                                 return_code      return value
+    printf "${format}" "${result}" "${function_to_test:0:${cw2}}" "${args:0:${cw3}}" "${s3}$3" "${iErr}" "$4" "${cmd_output:0:${cw7}}" 2>&1
+    }
+
+  test_file() {
+    # Verify arguments count.
+    [[ $# -eq 1 ]] || { bfl::error "arguments count $# ≠ 1."; return ${BFL_ErrCode_Not_verified_args_count}; }
+
+    # Test for empty strings.
+    bfl::is_blank "$1" && { bfl::error "\$test file is required.";        return 1; }
+    [[ -f "$1" ]] && local -r f="$1" || local -r f="${BASH_FUNCTIONS_LIBRARY%/*}"/test/"$1"
+    [[ -f "$f" ]]      || { bfl::error "\$test file '$1' doesn't exist."; return 1; }
+
+    local -i {iErr,i}=0
+
+    source "$f"
+    declare_assertions # Declare assertions.
+
+    local {assertion,s}= # Updating Function column width
+    for assertion in "${assertions[@]}"; do
+        s=$(echo "${assertion}" | sed 's/^[a-zA-Z0-9:_]*\(.\).*$/\1/')
+        IFS="$s" read -r -a pieces <<< "${assertion}"
+        if (( ${#pieces[@]} > 0 )); then
+            s="${pieces[0]}"; i=${#s}
+            ((i > cw2)) && cw2=i
+            s="${pieces[2]}"; i=${#s}
+            ((i > cw4)) && cw4=i
+        fi
+    done
+
+  # columns width:   Result Function Arguments  returncode    output
+  # readonly cw_arr=(   6      37        33       8     6      109 )
+  #                 PASS/FAIL                 Expected Actual
+
+    # Declare other local variables.
+    local -r format="%-${cw1}s %-${cw2}s %-${cw3}s %-"$((2*cw4 + 3))"s %-${cw7}s"
+    local {line_1,line_2,line_3,line_4,line_7,s2,s3,s4,s7}=
+    local -a pieces
+    local -i i=0
+
+    # Create table header lines for for displaying test results.
+    line_1=$(bfl::repeat "=" ${cw1})
+    line_2=$(bfl::repeat "=" ${cw2})
+    line_3=$(bfl::repeat "=" ${cw3})
+    line_4=$(bfl::repeat "=" $((2*cw4 + 3)) )
+  #  line_5=$(bfl::repeat "=" ${cw5})
+  #  line_6=$(bfl::repeat "=" ${cw6})
+    line_7=$(bfl::repeat "=" ${cw7})
+    ((cw2 > 8)) && s2=$(bfl::repeat " " $((cw2/2 - 4)) )
+    s3=$(bfl::repeat " " $((cw3/2 - 11)) )
+    s4=$(bfl::repeat " " $(( cw4 - 2 + 3/2)) )
+    s7=$(bfl::repeat " " $((cw7/2 - 20)) )
+
+    # Print table header.
+    printf "%-${cw1}s %-${cw2}s %-$(( cw3 - 6))s %-${cw4}s %-${cw7}s\\n" "" "" "" "Expected / Actual" ""
+    printf "${format}\\n" "Result" "${s2}Function" "${s3}Arguments (truncated)" "${s4}Code" "${s7}First line of command output (truncated)"
+    printf "%s %s %s %s %s %s\\n" "${line_1}" "${line_2}" "${line_3}" "${line_4}" "${line_7}" #  "${line_5}" "${line_6}"
+
+    printf "\n" 2>&1
+    printf "${bfl_aes_yellow_bold}Testing %s library...${bfl_aes_reset}\n" "$f" 2>&1
+    printf "\n" 2>&1
+
+    for assertion in "${assertions[@]}"; do
+        s=$(echo "${assertion}" | sed 's/^[a-zA-Z0-9:_]*\(.\).*$/\1/')
+        IFS="$s" read -r -a pieces <<< "${assertion}"
+        i=${#pieces[@]}
+        if [[ $i -eq 3 ]]; then
+            # called function        arguments    return code
+            assert "${pieces[0]}" "${pieces[1]}" "${pieces[2]}" || iErr=$?
+        elif [[ $i -eq 4 ]]; then
+            # called function        arguments    return code  expected result
+            assert "${pieces[0]}" "${pieces[1]}" "${pieces[2]}" "${pieces[3]}" || iErr=$?
+        else # error
+            iErr=1
+        fi
+    done
+
+    return ${iErr}
+    }
+
+  clear  # Clear the screen.
+  printf "\\n"  # Print initial newline.
+
+  if [[ $# -eq 1 ]]; then
+      test_file "$1"
+      iErr=$?
+      printf "\\n"
+      return ${iErr}
+  fi
+  # else
+  local d
+  for d in "${BASH_FUNCTIONS_LIBRARY%/*}"/lib/*; do
+      d="${d##*/}"
+      if [[ -f "${BASH_FUNCTIONS_LIBRARY%/*}"/test/"$d" ]]; then  #  && ! [[ "$d" = 'test' ]]
+        test_file "$d"
+      fi
+  done
+
+  # Print final newline.
+  printf "\\n"
+  }
+
+#set -euo pipefail
+main "$@"
