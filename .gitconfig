@@ -1,0 +1,6 @@
+[merge "driver_ours"]
+	name = A custom merge driver used to resolve conflicts in certain files
+	driver = git_drivers/ours.sh %O %A %B
+[merge "driver_theirs"]
+	name = A custom merge driver used to resolve conflicts in certain files
+	driver = git_drivers/theirs.sh %O %A %B
