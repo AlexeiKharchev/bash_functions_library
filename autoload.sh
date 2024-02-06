@@ -156,7 +156,7 @@ fi
 [[ "${DEBUG,,}" =~ ^1|yes|true$ ]] && set -o xtrace    # Trace the execution of the script (debug)
 
 # it's better to check dependencies at once, than dynamically check them every time by bfl::verify_dependencies()
-bfl::declare_dependencies_statically 'sed' 'aws' 'brew' 'cat' 'ccache' 'chmod' 'compgen' 'curl' 'cut' 'diff' 'dpkg' \
-  'egrep' 'find' 'getconf' 'git' 'grep' 'head' 'iconv' 'ifconfig' 'javaws' 'jq' 'ldapsearch' 'ldd' 'mkdir' 'mktemp' \
-  'opensnoop' 'openssl' 'pbcopy' 'pbpaste' 'perl' 'proxychains4' 'pwgen' 'python' 'rm' 'rmdir' 'ruby' 'sort' \
-  'screencapture' 'sendmail' 'shuf' 'speedtest-cli' 'sqlite3' 'ssh' 'tail' 'tput' 'uname' 'vcsh'
+bfl::declare_dependencies_statically 'sed' 'aws' 'brew' 'cat' 'ccache' 'chmod' 'column' 'compgen' 'curl' 'cut' 'deactivate' \
+  'diff' 'dpkg' 'egrep' 'find' 'getconf' 'git' 'grep' 'head' 'iconv' 'ifconfig' 'javaws' 'jq' 'ldapsearch' 'ldd' 'ln' 'mkdir' \
+  'mktemp' 'opensnoop' 'openssl' 'pbcopy' 'pbpaste' 'perl' 'proxychains4' 'pwgen' 'python' 'rm' 'rmdir' 'ruby' 'sort' \
+  'screencapture' 'sendmail' 'shuf' 'speedtest-cli' 'sqlite3' 'ssh' 'tail' 'tput' 'tr' 'uname' 'vcsh' 'virtualenv' 'workon' 'xargs'
