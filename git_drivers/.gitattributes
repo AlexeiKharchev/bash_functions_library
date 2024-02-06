@@ -1,0 +1,33 @@
+.gitattributes merge=driver_ours
+*.sh merge=driver_theirs
+
+# See https://git-scm.com/docs/gitattributes.
+
+#------------------------------------------------------------------------------
+# Text files.
+#
+# text
+#   - Converts line endings to LF in the repository.
+#
+# eol=lf
+#   - Normalizes line endings to LF on checkin and prevents conversion to CRLF
+#     when the file is checked out.
+#
+# whitespace=blank-at-eol,-blank-at-eof,-space-before-tab,tab-in-indent,tabwidth=2
+#   - Treats trailing whitespaces at the end of the line as an error.
+#   - Does not treat blank lines added at the end of file as an error.
+#   - Does not treat a space character that appears immediately before a tab
+#     character in the initial indent part of the line as an error.
+#   - Treats a tab character in the initial indent part of the line as an
+#     error.
+#   - Sets the tabwidth to 2.
+#
+# The whitespace configuration defines what diff and apply should consider
+# whitespace errors
+#   - Errors are exposed by default in 'git diff --color'.
+#   - Validate with 'git diff --check'.
+#   - Deny applying with 'git apply --whitespace=error-all'.
+#   - Fix automatically with 'git apply --whitespace=fix'.
+#------------------------------------------------------------------------------
+
+*.sh      text eol=lf whitespace=blank-at-eol,-blank-at-eof,-space-before-tab,tab-in-indent,tabwidth=2
